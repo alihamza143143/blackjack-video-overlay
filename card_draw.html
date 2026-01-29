@@ -5,75 +5,263 @@
     <title>Card Draw with p5.js</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/addons/p5.sound.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #1a1a1a;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: Arial, sans-serif;
+        }
+        #start-btn {
+            padding: 15px 40px;
+            font-size: 18px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-bottom: 20px;
+            transition: background 0.3s;
+        }
+        #start-btn:hover {
+            background: #45a049;
+        }
+        #start-btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        #status {
+            color: #fff;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        #video-container {
+            border: 2px solid #333;
+            border-radius: 4px;
+        }
+    </style>
 </head>
 <body>
-    <h2>Draw a Card</h2>
-    <button onclick="drawCard()">Draw Card</button>
-    <div id="card-container"></div>
+    <button id="start-btn" disabled>Loading...</button>
+    <div id="status"></div>
     <div id="video-container"></div>
     <script>
         let video;
         let videoReady = false;
-        let overlayImg;
+        let overlayImg = null;
         let overlayReady = false;
         let showOverlay = false;
+        let videoStarted = false;
+        let randomCardNumber = null;
+        let backendFetched = false;
+
+        // Canvas recording variables
+        let mediaRecorder = null;
+        let recordedChunks = [];
+        let canvasStream = null;
+        let isRecording = false;
+
         const VIDEO_WIDTH = 1920;
         const VIDEO_HEIGHT = 1080;
-        // Dummy drawCard function to avoid reference error from button
-        function drawCard() {}
-        // (Card logic removed as requested)
-        function preload() {
-            overlayImg = loadImage('/overlays/0_0034_3_of_spades.png', () => { overlayReady = true; });
+        const OVERLAY_SHOW_TIME = 10.1;
+        const BACKEND_URL = 'http://localhost:50497/api/random_card';
+
+        const CARD_FILES = [
+            '0_0000_black_joker.png', '0_0001_ace_of_spades2.png', '0_0002_ace_of_spades.png',
+            '0_0003_ace_of_hearts.png', '0_0004_ace_of_diamonds.png', '0_0005_ace_of_clubs.png',
+            '0_0006_10_of_spades.png', '0_0007_10_of_hearts.png', '0_0008_10_of_diamonds.png',
+            '0_0009_10_of_clubs.png', '0_0010_9_of_spades.png', '0_0011_9_of_hearts.png',
+            '0_0012_9_of_diamonds.png', '0_0013_9_of_clubs.png', '0_0014_8_of_spades.png',
+            '0_0015_8_of_hearts.png', '0_0016_8_of_diamonds.png', '0_0017_8_of_clubs.png',
+            '0_0018_7_of_spades.png', '0_0019_7_of_hearts.png', '0_0020_7_of_diamonds.png',
+            '0_0021_7_of_clubs.png', '0_0022_6_of_spades.png', '0_0023_6_of_hearts.png',
+            '0_0024_6_of_diamonds.png', '0_0025_6_of_clubs.png', '0_0026_5_of_spades.png',
+            '0_0027_5_of_hearts.png', '0_0028_5_of_diamonds.png', '0_0029_5_of_clubs.png',
+            '0_0030_4_of_spades.png', '0_0031_4_of_hearts.png', '0_0032_4_of_diamonds.png',
+            '0_0033_4_of_clubs.png', '0_0034_3_of_spades.png', '0_0035_3_of_hearts.png',
+            '0_0036_3_of_diamonds.png', '0_0037_3_of_clubs.png', '0_0038_2_of_spades.png',
+            '0_0039_2_of_hearts.png', '0_0040_2_of_diamonds.png', '0_0041_2_of_clubs.png',
+            '0_0042_red_joker.png', '0_0043_queen_of_spades2.png', '0_0044_queen_of_spades.png',
+            '0_0045_queen_of_hearts2.png', '0_0046_queen_of_hearts.png', '0_0047_queen_of_diamonds2.png',
+            '0_0048_queen_of_diamonds.png', '0_0049_queen_of_clubs2.png', '0_0050_queen_of_clubs.png',
+            '0_0051_king_of_spades2.png', '0_0052_king_of_spades.png', '0_0053_king_of_hearts2.png',
+            '0_0054_king_of_hearts.png', '0_0055_king_of_diamonds2.png', '0_0056_king_of_diamonds.png',
+            '0_0057_king_of_clubs2.png', '0_0058_king_of_clubs.png', '0_0059_jack_of_spades2.png',
+            '0_0060_jack_of_spades.png', '0_0061_jack_of_hearts2.png', '0_0062_jack_of_hearts.png',
+            '0_0063_jack_of_diamonds2.png', '0_0064_jack_of_diamonds.png', '0_0065_jack_of_clubs2.png',
+            '0_0066_jack_of_clubs.png'
+        ];
+
+        function updateStatus(msg) {
+            document.getElementById('status').textContent = msg;
+            console.log(msg);
         }
-        function setup() {
-            let cnv = createCanvas(960, 540); // Half of 1920x1080
-            cnv.parent('video-container');
-            video = createVideo(['test.mp4'], videoLoaded);
-            video.size(VIDEO_WIDTH, VIDEO_HEIGHT);
-            video.hide();
-            video.volume(1.0);
-            video.onended(() => {
-                showOverlay = false;
-                noLoop();
-            });
-            noLoop();
-        }
-        function videoLoaded() {
-            videoReady = true;
-            // Show overlay after 11 seconds
-            setTimeout(() => {
-                showOverlay = true;
-                loop();
-            }, 12500);
-        }
-        function mousePressed() {
-            // Log mouse coordinates
-            console.log('Mouse clicked at:', mouseX, mouseY);
-            // Start video playback on first click if needed
-            if (videoReady && video && video.elt.paused) {
-                video.loop();
-                loop();
+
+        async function fetchRandomNumber() {
+            try {
+                updateStatus('Fetching random card from backend...');
+                const response = await fetch(BACKEND_URL);
+                if (!response.ok) throw new Error('Backend RNG service unavailable');
+                const data = await response.json();
+                randomCardNumber = Math.abs(data.card_number) % CARD_FILES.length;
+                backendFetched = true;
+                console.log('Backend card_number:', data.card_number, '-> card index:', randomCardNumber, '->', CARD_FILES[randomCardNumber]);
+                loadRandomCardImage();
+            } catch (err) {
+                console.error('Backend RNG required but unavailable:', err);
+                updateStatus('ERROR: RNG Backend not running at localhost:50497');
+                alert('RNG Backend not running. Start server at localhost:50497');
             }
         }
 
-        function keyPressed() {
-            // Pause/play video on space bar
-            if (videoReady && video) {
-                if (key === ' ') {
-                    if (video.elt.paused) {
-                        video.loop();
-                        loop();
-                    } else {
-                        video.pause();
+        function loadRandomCardImage() {
+            if (randomCardNumber == null) return;
+            const cardPath = 'overlays/' + CARD_FILES[randomCardNumber];
+            updateStatus('Loading card overlay...');
+            overlayImg = loadImage(cardPath, () => {
+                overlayReady = true;
+                console.log('Random overlay loaded:', cardPath);
+                createVideoElement();
+            });
+        }
+
+        function createVideoElement() {
+            updateStatus('Loading video...');
+            video = createVideo(['test.mp4'], videoLoaded);
+            video.size(VIDEO_WIDTH, VIDEO_HEIGHT);
+            video.hide();
+            video.elt.setAttribute('playsinline', '');
+            video.onended(() => {
+                showOverlay = false;
+                videoStarted = false;
+                console.log('Video ended - overlay hidden');
+                stopRecording();
+                noLoop();
+            });
+        }
+
+        function videoLoaded() {
+            videoReady = true;
+            updateStatus('Ready! Click "Start Video" to begin.');
+            const btn = document.getElementById('start-btn');
+            btn.disabled = false;
+            btn.textContent = 'Start Video';
+        }
+
+        // Button click handler - starts video with audio
+        document.getElementById('start-btn').addEventListener('click', function() {
+            if (!videoReady || !overlayReady) return;
+            
+            this.disabled = true;
+            this.textContent = 'Playing...';
+            
+            // Start video with audio (user interaction allows unmuted playback)
+            video.elt.muted = false;
+            video.volume(1.0);
+            video.play();
+            videoStarted = true;
+            
+            // Start canvas recording
+            startRecording();
+            
+            loop();
+            updateStatus('Recording canvas...');
+        });
+
+        // Canvas recording functions
+        function startRecording() {
+            recordedChunks = [];
+            const canvas = document.querySelector('canvas');
+            
+            // Capture canvas stream at 30fps
+            canvasStream = canvas.captureStream(30);
+            
+            // Try to get audio from video and add to stream
+            try {
+                if (video && video.elt.captureStream) {
+                    const videoStream = video.elt.captureStream();
+                    const audioTracks = videoStream.getAudioTracks();
+                    if (audioTracks.length > 0) {
+                        canvasStream.addTrack(audioTracks[0]);
+                        console.log('Audio track added to recording');
                     }
                 }
+            } catch (e) {
+                console.log('Could not capture audio:', e);
+            }
+            
+            // Set up MediaRecorder with webm format (most compatible)
+            const options = { mimeType: 'video/webm;codecs=vp9' };
+            if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                options.mimeType = 'video/webm;codecs=vp8';
+            }
+            if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                options.mimeType = 'video/webm';
+            }
+            
+            mediaRecorder = new MediaRecorder(canvasStream, options);
+            
+            mediaRecorder.ondataavailable = function(event) {
+                if (event.data.size > 0) {
+                    recordedChunks.push(event.data);
+                }
+            };
+            
+            mediaRecorder.onstop = function() {
+                downloadRecording();
+            };
+            
+            mediaRecorder.start(100); // Collect data every 100ms
+            isRecording = true;
+            console.log('Canvas recording started');
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+                console.log('Canvas recording stopped');
+                updateStatus('Recording complete! Downloading...');
             }
         }
+
+        function downloadRecording() {
+            const blob = new Blob(recordedChunks, { type: 'video/webm' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            // Generate filename with card name and timestamp
+            const cardName = CARD_FILES[randomCardNumber].replace('.png', '');
+            const timestamp = new Date().toISOString().slice(0, 19).replace(/[:-]/g, '');
+            a.download = `blackjack_${cardName}_${timestamp}.webm`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            updateStatus('Download complete! Refresh page for new card.');
+            document.getElementById('start-btn').textContent = 'Done - Refresh for new card';
+            console.log('Recording downloaded:', a.download);
+        }
+
+        function setup() {
+            createCanvas(960, 540).parent('video-container');
+            noLoop();
+            fetchRandomNumber();
+        }
+
         function draw() {
             background(0);
             let drawW, drawH, drawX, drawY;
-            if (videoReady) {
-                // Fit video to canvas, keep aspect ratio
+
+            if (videoReady && videoStarted && video) {
+                let currentTime = video.time();
+                if (currentTime >= OVERLAY_SHOW_TIME && overlayReady && overlayImg) {
+                    showOverlay = true;
+                }
                 let canvasAspect = width / height;
                 let videoAspect = VIDEO_WIDTH / VIDEO_HEIGHT;
                 if (canvasAspect > videoAspect) {
@@ -86,25 +274,11 @@
                 drawX = (width - drawW) / 2;
                 drawY = (height - drawH) / 2;
                 image(video, drawX, drawY, drawW, drawH);
-                // Draw overlay image at (0,0) in video coordinates, scaled to canvas
-                if (overlayReady && showOverlay) {
+                if (showOverlay && overlayImg) {
                     image(overlayImg, drawX, drawY, drawW, drawH);
                 }
             }
         }
-          
-        
     </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
