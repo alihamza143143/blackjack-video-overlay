@@ -1,0 +1,20 @@
+syntax = "proto3";
+package sgc7pb;
+option go_package = "gitee.com/heartfun/rouletteserv/proto";
+
+// RequestRngs - request some rngs
+message RequestRngs {
+    int32 nums = 1;
+    string gamecode = 2;
+}
+
+// ReplyRngs - reply rngs
+message ReplyRngs {
+    repeated uint32 rngs = 1;
+}
+
+// Rng - RNG Service
+service Rng {
+	// getRngs - get rngs
+    rpc getRngs(RequestRngs) returns (ReplyRngs) {}
+}

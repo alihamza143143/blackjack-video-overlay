@@ -1,0 +1,29 @@
+syntax = "proto3";
+package sgc7pb;
+option go_package = "gitee.com/heartfun/rouletteserv/proto";
+
+message Bet {
+    repeated int32 numbers = 1;  // 下注的数字
+    int64 amount = 2;           // 下注金额
+}
+
+// 单个下注的输赢
+message BetWin {
+    Bet bet = 1;
+    string betType = 2;    // 自动识别的下注类型
+    bool win = 3;
+    int64 winAmount = 4;
+    int32 payout = 5;       // 赔付倍数
+}
+
+// GameModParam
+message GameModParam {
+    int32 winningNumber = 1;
+    repeated BetWin wins = 2;
+    int64 totalWin = 3;
+}
+
+// 下注请求
+message BetRequest {
+    repeated Bet bets = 1;
+}

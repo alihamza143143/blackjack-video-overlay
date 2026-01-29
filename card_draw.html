@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Card Draw with p5.js</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/addons/p5.sound.min.js"></script>
+</head>
+<body>
+    <h2>Draw a Card</h2>
+    <button onclick="drawCard()">Draw Card</button>
+    <div id="card-container"></div>
+    <div id="video-container"></div>
+    <script>
+        let video;
+        let videoReady = false;
+        let overlayImg;
+        let overlayReady = false;
+        let showOverlay = false;
+        const VIDEO_WIDTH = 1920;
+        const VIDEO_HEIGHT = 1080;
+        // Dummy drawCard function to avoid reference error from button
+        function drawCard() {}
+        // (Card logic removed as requested)
+        function preload() {
+            overlayImg = loadImage('/overlays/0_0034_3_of_spades.png', () => { overlayReady = true; });
+        }
+        function setup() {
+            let cnv = createCanvas(960, 540); // Half of 1920x1080
+            cnv.parent('video-container');
+            video = createVideo(['test.mp4'], videoLoaded);
+            video.size(VIDEO_WIDTH, VIDEO_HEIGHT);
+            video.hide();
+            video.volume(1.0);
+            video.onended(() => {
+                showOverlay = false;
+                noLoop();
+            });
+            noLoop();
+        }
+        function videoLoaded() {
+            videoReady = true;
+            // Show overlay after 11 seconds
+            setTimeout(() => {
+                showOverlay = true;
+                loop();
+            }, 12500);
+        }
+        function mousePressed() {
+            // Log mouse coordinates
+            console.log('Mouse clicked at:', mouseX, mouseY);
+            // Start video playback on first click if needed
+            if (videoReady && video && video.elt.paused) {
+                video.loop();
+                loop();
+            }
+        }
+
+        function keyPressed() {
+            // Pause/play video on space bar
+            if (videoReady && video) {
+                if (key === ' ') {
+                    if (video.elt.paused) {
+                        video.loop();
+                        loop();
+                    } else {
+                        video.pause();
+                    }
+                }
+            }
+        }
+        function draw() {
+            background(0);
+            let drawW, drawH, drawX, drawY;
+            if (videoReady) {
+                // Fit video to canvas, keep aspect ratio
+                let canvasAspect = width / height;
+                let videoAspect = VIDEO_WIDTH / VIDEO_HEIGHT;
+                if (canvasAspect > videoAspect) {
+                    drawH = height;
+                    drawW = height * videoAspect;
+                } else {
+                    drawW = width;
+                    drawH = width / videoAspect;
+                }
+                drawX = (width - drawW) / 2;
+                drawY = (height - drawH) / 2;
+                image(video, drawX, drawY, drawW, drawH);
+                // Draw overlay image at (0,0) in video coordinates, scaled to canvas
+                if (overlayReady && showOverlay) {
+                    image(overlayImg, drawX, drawY, drawW, drawH);
+                }
+            }
+        }
+          
+        
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+

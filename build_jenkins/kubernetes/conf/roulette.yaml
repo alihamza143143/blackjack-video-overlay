@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: roulette
+  namespace: rgs
+spec:
+  replicas: 1
+  selector:
+   matchLabels:
+    name: roulette
+  template:
+    metadata:
+      labels:
+        name: roulette
+    spec:
+      containers:
+      - name: roulette
+        image: harbor.rgstest.slammerstudios.com/game/roulette/roulette:latest
+        imagePullPolicy: Always
+        env:
+        - name: DEBUG
+          value: "false"
+        - name: RNG
+          value: "rngserv:50000"
+      imagePullSecrets:
+      - name: rgsregistry
+      restartPolicy: Always

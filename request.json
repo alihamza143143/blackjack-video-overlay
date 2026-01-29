@@ -1,0 +1,11 @@
+{
+  "playerState": {},
+  "stake": {
+    "coinBet": 100,
+    "cashBet": 100,
+    "currency": "USD"
+  },
+  "cheat": "",
+  "clientParams": "",
+  "command": ""
+}

@@ -1,0 +1,109 @@
+syntax = "proto3";
+package sgc7pb;
+option go_package = "gitee.com/heartfun/rouletteserv/proto";
+import "google/protobuf/any.proto";
+
+// Column
+message Column {
+    repeated int32 values = 1;
+}
+
+// TestBackendRequest - test input
+message TestBackendRequest {
+    string message = 1;
+}
+
+// TestBackendReply - test output
+message TestBackendReply {
+    string reply = 1;
+}
+
+// GameScene
+message GameScene {
+    repeated Column values = 1;     // 列
+    repeated int32 indexes = 2;     // 轮子索引
+    repeated int32 validRow = 3;    // 有效的行
+}
+
+// GameConfig
+message GameConfig {
+    string ver = 6;
+    string coreVer = 7;
+    GameScene defaultScene = 8;
+    string data = 11;
+}
+
+// RequestConfig
+message RequestConfig {
+}
+
+// PlayerState
+message PlayerState {
+    google.protobuf.Any public = 1;
+    google.protobuf.Any private = 2;
+}
+
+// RequestInitialize
+message RequestInitialize {
+}
+
+message Stake {
+    int64 coinBet = 1;
+    int64 cashBet = 2;
+    string currency = 3;
+}
+
+// RequestPlay - play input parameters for the game
+message RequestPlay {
+    PlayerState playerState = 1;
+    string cheat = 2;
+    Stake stake = 3;
+    string clientParams = 4;
+    string command = 5;
+}
+
+// RngInfo - rng infomation
+message RngInfo {
+    int32 bits = 1;
+    int32 range = 2;
+    int32 value = 3;
+}
+
+// PlayResult - result for play
+message PlayResult {
+    string curGameMod = 1;                      // 当前游戏模块，一般是 bg、fg 等等
+    google.protobuf.Any curGameModParam = 2;    // 这个是游戏参数，每个游戏不一样，保存不同游戏的特殊数据
+}
+
+// GameResult - game result
+//      每个game round的结算数据
+message GameResult {
+    int64 coinWin = 1;          // 线注的倍数
+    int64 cashWin = 2;          // 实际的赢得
+    PlayResult clientData = 3;  // 局面数据
+}
+
+// ReplyPlay - play output parameters for the game
+message ReplyPlay {
+    repeated RngInfo randomNumbers = 1;
+    PlayerState playerState = 2;
+    bool finished = 3;
+    repeated GameResult results = 4;
+    repeated string nextCommands = 5;
+    repeated string nextCommandParams = 7;
+}
+
+// TestService - for backend testing
+service TestService {
+    rpc TestBackend(TestBackendRequest) returns (TestBackendReply) {}
+}
+
+// GameLogic - GameLogic
+service GameLogic {
+    // getConfig - get config
+    rpc getConfig(RequestConfig) returns (GameConfig) {}
+    // initialize - initialize a player
+    rpc initialize(RequestInitialize) returns (PlayerState) {}
+    // play2 - play game v2
+    rpc play2(RequestPlay) returns (ReplyPlay) {}
+}

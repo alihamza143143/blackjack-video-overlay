@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: roulette
+  namespace: rgs
+  labels:
+    name: roulette
+spec:
+  type: ClusterIP
+  selector:
+    name: roulette
+  ports:
+  - name: roulette
+    port: 6000
+    targetPort: 6000

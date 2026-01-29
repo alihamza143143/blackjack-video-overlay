@@ -1,0 +1,21 @@
+version: '3'
+
+services:
+  roulette:
+    build: .
+    ports:
+      - "6000:6000"
+    environment:
+      - PORT=6000
+      - RNG=roulette-rng:50000
+    depends_on:
+      - roulette-rng
+
+  roulette-rng:
+    build:
+      context: .
+      dockerfile: Dockerfile.rng
+    ports:
+      - "50000:50000"
+    environment:
+      - PORT=50000
